@@ -8,6 +8,30 @@ rm(sample.training.data)
 # Note: In optim() you can tell it to display updates as it goes with:
 # optim( ... , control=list(trace=4))
 
+# below is a past example
+accumulator.model.rmse <- function(parameters){
+  rate <- parameters[1]
+  noise <- parameters[2]
+  threshold <- parameters[3]
+  
+  # check if the rate and the noise and the threshold - they should all be positive
+  if (rate > 0 && noise > 0 && threshold >0) {
+    simulated <- 
+      replicate(1000, {simple.accumulator(rate, noise, threshold)})
+    
+    rmse <- sqrt(mean((rt.data - simulated)^2))
+    
+    return(rmse)
+  } else {
+    return(NA)
+  }
+}
+
+fit.accumulator <- optim(c(1,3,100), accumulator.model.rmse, method="Nelder-Mead")
+fit.accumulator$par
+fit.accumulator$value
+
+
 # Now try fitting a restricted version of the model, where we assume there is no decay.
 # Fix the decay.rate parameter to 1, and use optim to fit the sensitivity parameter.
 # Note that you will need to use method="Brent" in optim() instead of Nelder-Mead. 

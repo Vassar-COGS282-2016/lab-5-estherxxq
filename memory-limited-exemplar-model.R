@@ -34,7 +34,28 @@
 sample.training.data <- data.frame(x=c(0.5,0.6), y=c(0.4,0.3), category=c(1,2))
 
 exemplar.memory.limited <- function(training.data, x.val, y.val, target.category, sensitivity, decay.rate){
-  return(NA)
+  # to make typing easier
+  td <- training.data
+  # the order of decay, so row 1 has the largest number, and the last row has 0
+  td$order <- c((nrow(td)-1):0)
+  # weight
+  td$weight = 1*decay.rate^td$order
+
+  # distance
+  td$distance <- mapply(function(x,y) {
+      return(sqrt( (x-x.stim)^2 + (y-y.stim)^2 ))
+    }, td$x, td$y)
+  
+  # similarity
+  td$similarity <- exp(-sensitivity * td$distance)
+  
+  # memory-weighted similarity
+  td$mws <- td$similarity * td$weight
+  
+  # predicted probability of a response for the target category
+  pr.correct <- sum(subset(td, category==target.category)$mws) / sum(td$mws)
+
+  return(pr.correct)
 }
 
 # Once you have the model implemented, write the log-likelihood function for a set of data.
@@ -60,5 +81,32 @@ sample.data.set[4,]
 # Don't forget that decay rate should be between 0 and 1, and that sensitivity should be > 0.
 
 exemplar.memory.log.likelihood <- function(all.data, sensitivity, decay.rate){
-  return(NA)
+  # to make my life easier
+  ad <- all.data
+  # check decay rate and sensitivity
+  if (decay.rate > 0 && decay.rate < 1 && sensitivity > 0) {
+    # the probability of the first row is 0.5 
+    ad$pr[1] <- 0.5
+    # calculate the probability of the following rows
+    for (x in 2:n.rows(ad)) {
+      ad$pr.correct[x] <- examplar.memory.limited(ad[1:x-1,], ad[x,]$x, ad[x,]$y, ad[x,]$category, sensitivity, decay.rate)
+    }
+  } else {
+    return(NA)
+  }
+  # the likelihood of getting the particular response, instead of a corrected response
+  ad$pr.response <- c(1:nrow(ad))
+  for (x in 1:nrow(ad)) {
+    if (ad$category[x]=="TRUE") {
+      ad$pr.response[x] == ad$pr.correct[x]
+    } else {
+      ad$pr.response[x] == 1 - ad$pr.correct[x]
+    }}
+
+  # calculate log likelihood
+  ad$log.likelihood <- log(ad$pr.response)
+  
+  # calculate log likelihood for the whole set of data
+  return(sum(ad$log.likelihood))
 }
+

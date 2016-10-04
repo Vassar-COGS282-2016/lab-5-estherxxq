@@ -43,7 +43,7 @@ exemplar.memory.limited <- function(training.data, x.val, y.val, target.category
 
   # distance
   td$distance <- mapply(function(x,y) {
-      return(sqrt( (x-x.stim)^2 + (y-y.stim)^2 ))
+      return(sqrt((x.val-x)^2 + (y.val-y)^2))
     }, td$x, td$y)
   
   # similarity
@@ -57,6 +57,9 @@ exemplar.memory.limited <- function(training.data, x.val, y.val, target.category
 
   return(pr.correct)
 }
+
+exemplar.memory.limited(sample.training.data, 0.55, 0.35, 1, 0.6, 0.5)
+  
 
 # Once you have the model implemented, write the log-likelihood function for a set of data.
 # The set of data for the model will look like this:
@@ -83,30 +86,42 @@ sample.data.set[4,]
 exemplar.memory.log.likelihood <- function(all.data, sensitivity, decay.rate){
   # to make my life easier
   ad <- all.data
-  # check decay rate and sensitivity
-  if (decay.rate > 0 && decay.rate < 1 && sensitivity > 0) {
-    # the probability of the first row is 0.5 
-    ad$pr[1] <- 0.5
+  
+# I'm commenting out the value check for sensitivity and decay.rate here, and put them in the
+# optim() function instead.
+#  if (sensitivity > 0 && decay.rate > 0 && decay.rate < 1){
+    ad$pr.correct <- 1:nrow(ad)
+    # the probability of the first row is 0.5
+    ad$pr.correct[1] <- 0.5
     # calculate the probability of the following rows
-    for (x in 2:n.rows(ad)) {
-      ad$pr.correct[x] <- examplar.memory.limited(ad[1:x-1,], ad[x,]$x, ad[x,]$y, ad[x,]$category, sensitivity, decay.rate)
-    }
-  } else {
-    return(NA)
-  }
+    x = 2
+    while (x <= nrow(ad)) {
+      ad$pr.correct[x] <- exemplar.memory.limited(ad[1:(x-1),], ad$x[x], ad$y[x], ad$category[x], sensitivity, decay.rate)
+      x = x + 1
+      }
+#  } else {
+#    return(NA)
+#  }
+
   # the likelihood of getting the particular response, instead of a corrected response
-  ad$pr.response <- c(1:nrow(ad))
-  for (x in 1:nrow(ad)) {
-    if (ad$category[x]=="TRUE") {
-      ad$pr.response[x] == ad$pr.correct[x]
+  ad$pr.response <- 1:nrow(ad)
+  x = 1
+  while (x <= nrow(ad)){
+    if (ad$correct[x]=="TRUE") {
+      ad$pr.response[x] <- ad$pr.correct[x]
     } else {
-      ad$pr.response[x] == 1 - ad$pr.correct[x]
-    }}
+      ad$pr.response[x] <- 1 - ad$pr.correct[x]
+    }
+    x = x + 1
+  }
 
   # calculate log likelihood
   ad$log.likelihood <- log(ad$pr.response)
-  
+
   # calculate log likelihood for the whole set of data
   return(sum(ad$log.likelihood))
 }
+
+# to test if exemplar.memory.log.likelihood works
+exemplar.memory.log.likelihood(all.data, 0.6, 0.8)
 
